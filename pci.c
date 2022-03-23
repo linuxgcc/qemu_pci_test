@@ -18,7 +18,6 @@ Grep QEMU source for the device description, and keep it open at all times!
 -   http://nairobi-embedded.org/linux_pci_device_driver.html
 */
 
-#include <asm/uaccess.h> /* put_user */
 #include <linux/cdev.h> /* cdev_ */
 #include <linux/fs.h>
 #include <linux/init.h>
@@ -26,6 +25,7 @@ Grep QEMU source for the device description, and keep it open at all times!
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/pci.h>
+#include <linux/uaccess.h>
 
 /* Each PCI device has 6 BAR IOs (base address register) as per the PCI spec.
  *
@@ -168,7 +168,7 @@ static int pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	/* IRQ setup. */
 	pci_read_config_byte(dev, PCI_INTERRUPT_LINE, &val);
 	pci_irq = val;
-	if (request_irq(pci_irq, irq_handler, IRQF_SHARED, "pci_irq_handler0", &major) < 0) {
+	if (request_irq(pci_irq, irq_handler, IRQF_SHARED, "pci_irq_handler0", dev) < 0) {
 		dev_err(&(dev->dev), "request_irq\n");
 		goto error;
 	}
@@ -214,6 +214,7 @@ error:
 static void pci_remove(struct pci_dev *dev)
 {
 	pr_info("pci_remove\n");
+	free_irq(pci_irq, dev);
 	pci_release_region(dev, BAR);
 	unregister_chrdev(major, CDEV_NAME);
 }
